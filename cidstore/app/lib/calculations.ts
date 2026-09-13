@@ -1,3 +1,4 @@
+import { getPriceInIdr } from "@/app/lib/market-data";
 import { marketCoins, networkFeeMap } from "@/app/lib/mock-data";
 import type { CryptoDefinition, QuoteBreakdown, CryptoSymbol } from "@/app/types";
 
@@ -21,7 +22,7 @@ export function calculateQuote({
   type: "BUY" | "SELL";
 }): QuoteBreakdown {
   const cryptoDefinition = getCryptoDefinition(crypto);
-  const marketRate = cryptoDefinition.rateIdr;
+  const marketRate = getPriceInIdr(crypto) || cryptoDefinition.rateIdr;
 
   const cryptoAmount = amountMode === "crypto" ? amount : amount / marketRate;
   const idrAmount = amountMode === "idr" ? amount : amount * marketRate;

@@ -1,14 +1,6 @@
 import Link from "next/link";
-
-const marketCoins = [
-  { symbol: "BTC", name: "Bitcoin", price: "$67,420.30", change: "+2.48%", accent: "from-amber-400 to-orange-500" },
-  { symbol: "ETH", name: "Ethereum", price: "$3,560.12", change: "+1.81%", accent: "from-sky-400 to-indigo-500" },
-  { symbol: "SOL", name: "Solana", price: "$164.75", change: "+4.64%", accent: "from-violet-400 to-fuchsia-500" },
-  { symbol: "USDT", name: "Tether", price: "$1.00", change: "+0.02%", accent: "from-emerald-400 to-teal-500" },
-  { symbol: "USDC", name: "USD Coin", price: "$1.00", change: "+0.01%", accent: "from-cyan-400 to-blue-500" },
-  { symbol: "TRX", name: "TRON", price: "$0.27", change: "+1.11%", accent: "from-red-400 to-rose-500" },
-  { symbol: "BNB", name: "BNB", price: "$592.41", change: "+1.86%", accent: "from-yellow-400 to-amber-500" },
-];
+import { MarketOverview } from "@/app/components/market-overview";
+import { CryptoCandlestickChart } from "@/app/components/crypto-candlestick-chart";
 
 const benefits = [
   { title: "Fast Transaction", description: "Execute demo exchanges with a smooth, lightweight flow built for speed." },
@@ -126,52 +118,10 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {marketCoins.map((coin) => (
-            <article
-              key={coin.symbol}
-              className="group rounded-[28px] border border-white/10 bg-slate-900/80 p-5 transition duration-300 hover:-translate-y-1 hover:border-cyan-400/40 hover:bg-slate-900"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${coin.accent} text-lg font-black text-slate-950 shadow-lg`}
-                  >
-                    {coin.symbol.slice(0, 1)}
-                  </div>
-                  <div>
-                    <p className="text-xl font-semibold text-white">{coin.symbol}</p>
-                    <p className="text-sm text-slate-400">{coin.name}</p>
-                  </div>
-                </div>
-                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
-                  {coin.change}
-                </span>
-              </div>
+        <MarketOverview />
 
-              <div className="mt-6 flex items-end justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Price</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{coin.price}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 flex gap-3">
-                <Link
-                  href="/exchange"
-                  className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2.5 text-center text-sm font-semibold text-slate-950"
-                >
-                  Buy
-                </Link>
-                <Link
-                  href="/exchange"
-                  className="flex-1 rounded-full border border-white/10 bg-slate-950/60 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
-                >
-                  Sell
-                </Link>
-              </div>
-            </article>
-          ))}
+        <div className="mt-8">
+          <CryptoCandlestickChart />
         </div>
       </section>
 

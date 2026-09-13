@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { OrderReviewModal } from "@/app/components/order-review-modal";
 import { Toast } from "@/app/components/toasts";
 import { calculateQuote, getCryptoDefinition } from "@/app/lib/calculations";
+import { getPriceInIdr } from "@/app/lib/market-data";
 import {
   danaPaymentDetails,
   marketCoins,
@@ -49,7 +50,7 @@ export function ExchangeForm() {
       : {
           cryptoAmount: 0,
           idrAmount: 0,
-          marketRate: selectedCrypto.rateIdr,
+          marketRate: getPriceInIdr(crypto) || selectedCrypto.rateIdr,
           serviceFee: 0,
           networkFee: networkFeeMap[network] ?? 0,
           total: 0,

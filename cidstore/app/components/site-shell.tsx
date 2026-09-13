@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 const navItems = [
@@ -12,9 +12,17 @@ const navItems = [
   { label: "Support", href: "/support" },
 ];
 
-export function SiteShell({ children }: { children: ReactNode }) {
+export function SiteShell({
+  children,
+  isCustomerLoggedIn,
+}: {
+  children: ReactNode;
+  isCustomerLoggedIn: boolean;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -26,6 +34,25 @@ export function SiteShell({ children }: { children: ReactNode }) {
     }
 
     return pathname.startsWith(href);
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      const response = await fetch("/api/customer/logout", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to log out.");
+      }
+
+      setMobileMenuOpen(false);
+      router.refresh();
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -64,18 +91,40 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </nav>
 
             <div className="hidden items-center gap-3 md:flex">
-              <Link
-                href="/login"
-                className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
-              >
-                Login
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:scale-[1.02]"
-              >
-                Register
-              </Link>
+              {isCustomerLoggedIn ? (
+                <>
+                  <div className="flex items-center gap-3 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(74,222,128,0.8)]" aria-hidden="true" />
+                    <div className="flex flex-col leading-none text-left">
+                      <span className="text-[10px] uppercase tracking-[0.24em] text-cyan-200/80">Account</span>
+                      <span className="mt-1 text-sm font-semibold text-cyan-50">Account</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-rose-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isLoggingOut ? "Logging out..." : "Logout"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:scale-[1.02]"
+                  >
+                    Register
+                  </Link>
+                </>
+              )}
             </div>
 
             <button
@@ -107,22 +156,39 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   {item.label}
                 </Link>
               ))}
-              <div className="mt-4 flex gap-3">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 rounded-full border border-white/10 px-4 py-3 text-center text-sm font-medium text-slate-200"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-3 text-center text-sm font-semibold text-slate-950"
-                >
-                  Register
-                </Link>
-              </div>
+              {isCustomerLoggedIn ? (
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-200/80">Account</p>
+                    <p className="mt-2 text-sm font-semibold text-cyan-50">Account</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                    className="w-full rounded-full border border-white/10 bg-slate-900/70 px-4 py-3 text-sm font-medium text-slate-200 transition hover:border-rose-400/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isLoggingOut ? "Logging out..." : "Logout"}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 flex gap-3">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex-1 rounded-full border border-white/10 px-4 py-3 text-center text-sm font-medium text-slate-200"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex-1 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-3 text-center text-sm font-semibold text-slate-950"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
             </nav>
           )}
         </div>

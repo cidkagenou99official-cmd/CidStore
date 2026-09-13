@@ -45,10 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   try {
     const cookieStore = await cookies();
     const session = verifyAdminSession(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
+    const currentUser = await getCurrentUser();
 
     const { id } = await params;
     const body = (await request.json()) as Record<string, unknown>;
@@ -56,6 +53,34 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     if (!nextStatus) {
       return NextResponse.json({ error: "Status is required." }, { status: 400 });
+    }
+
+    const existingOrder = await getOrderById(id);
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    }
+
+    if (!session) {
+      if (!currentUser) {
+        return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+      }
+
+      if (existingOrder.type !== "BUY") {
+        return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+      }
+
+      if (!existingOrder.userId || existingOrder.userId !== currentUser.id) {
+        return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+      }
+
+      if (existingOrder.status !== "PENDING") {
+        return NextResponse.json({ error: "Payment proof can only be submitted for pending BUY orders." }, { status: 400 });
+      }
+
+      if (nextStatus !== "WAITING_VERIFICATION") {
+        return NextResponse.json({ error: "Invalid order status transition for payment proof submission." }, { status: 400 });
+      }
     }
 
     let updated;
