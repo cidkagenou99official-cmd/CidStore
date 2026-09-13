@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { MessageCircle, Send } from "lucide-react";
+import { TELEGRAM_BOT_URL, TELEGRAM_CS_URL } from "@/app/lib/telegram";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -91,6 +93,24 @@ export function SiteShell({
             </nav>
 
             <div className="hidden items-center gap-3 md:flex">
+              <a
+                href={TELEGRAM_BOT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:border-cyan-400/60 hover:bg-cyan-500/20 hover:text-white"
+              >
+                <Send className="h-4 w-4" />
+                Bot
+              </a>
+              <a
+                href={TELEGRAM_CS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-2 text-sm font-medium text-indigo-200 transition hover:border-indigo-400/60 hover:bg-indigo-500/20 hover:text-white"
+              >
+                <MessageCircle className="h-4 w-4" />
+                CS
+              </a>
               {isCustomerLoggedIn ? (
                 <>
                   <div className="flex items-center gap-3 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-2">
