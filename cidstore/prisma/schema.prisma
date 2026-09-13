@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum PaymentMethod {
+  QRIS
+  DANA
+}
+
+enum OrderStatus {
+  PENDING
+  WAITING_VERIFICATION
+  PAYMENT_VERIFIED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REJECTED
+  WAITING_CRYPTO
+}
+
+enum PaymentStatus {
+  AWAITING_PAYMENT
+  WAITING_VERIFICATION
+  PAYMENT_VERIFIED
+  AWAITING_CRYPTO
+  REJECTED
+}
+
+enum DepositTransactionStatus {
+  PENDING
+  DETECTED
+  CONFIRMING
+  CONFIRMED
+  FAILED
+  REORGED
+  CREDITED
+  REJECTED
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String?         @unique
+  name            String?
+  passwordHash    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  depositAddresses DepositAddress[]
+  orders          Order[]
+}
+
+model DepositAddress {
+  id               String             @id @default(cuid())
+  userId           String
+  asset            String
+  network          String
+  address          String?
+  derivationIndex  Int?
+  enabled          Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders           Order[]
+  depositTransactions DepositTransaction[]
+
+  @@unique([userId, asset, network])
+}
+
+model NetworkConfig {
+  id              String   @id @default(cuid())
+  asset           String
+  network         String
+  displayName     String
+  explorerBaseUrl String?
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([asset, network])
+}
+
+model DepositTransaction {
+  id                     String                   @id @default(cuid())
+  depositAddressId       String
+  orderId                String?
+  provider               String?
+  providerEventId        String?
+  providerTransactionId  String?
+  providerAddressReference String?
+  txHash                 String?
+  asset                  String
+  network                String
+  amount                 String?
+  confirmations         Int?
+  status                 DepositTransactionStatus @default(PENDING)
+  canonicalTxKey         String                   @unique
+  detectedAt             DateTime?
+  confirmedAt            DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  depositAddress         DepositAddress           @relation(fields: [depositAddressId], references: [id], onDelete: Cascade)
+  order                  Order?                   @relation(fields: [orderId], references: [id])
+  depositEvents          DepositEvent[]
+
+  @@index([providerTransactionId])
+  @@index([txHash])
+}
+
+model DepositEvent {
+  id                    String                   @id @default(cuid())
+  depositTransactionId  String?
+  provider              String
+  providerEventId       String
+  providerTransactionId String?
+  txHash                String?
+  status                DepositTransactionStatus
+  processedAt           DateTime?
+  rawEvent              Json?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  depositTransaction    DepositTransaction?      @relation(fields: [depositTransactionId], references: [id])
+
+  @@unique([provider, providerEventId])
+  @@index([depositTransactionId])
+  @@index([providerTransactionId])
+  @@index([txHash])
+}
+
+model Order {
+  id                  String             @id
+  type                OrderType
+  crypto              String
+  cryptoName          String
+  network             String
+  cryptoAmount        String
+  fiatAmount          String
+  fee                 String
+  networkFee          String
+  serviceFee          String
+  paymentMethod       PaymentMethod
+  walletAddress       String?
+  total               String
+  paymentProof        String?
+  status              OrderStatus        @default(PENDING)
+  paymentStatus       PaymentStatus?
+  customerContact     String?
+  userId              String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  paymentSubmittedAt   DateTime?
+  verifiedAt          DateTime?
+  adminNote           String?
+  depositAddressId    String?
+  depositAddress      DepositAddress?    @relation(fields: [depositAddressId], references: [id])
+  user                User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  depositTransactions DepositTransaction[]
+}
