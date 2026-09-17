@@ -47,28 +47,35 @@ enum DepositTransactionStatus {
 }
 
 model User {
-  id              String          @id @default(cuid())
-  email           String?         @unique
-  name            String?
-  passwordHash    String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  depositAddresses DepositAddress[]
-  orders          Order[]
+  id                 String              @id @default(cuid())
+  email              String?             @unique
+  name               String?
+  passwordHash       String?
+  phone              String?
+  telegramUsername   String?
+  telegramId         String?             @unique
+  language           String              @default("id")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  depositAddresses   DepositAddress[]
+  orders             Order[]
+  withdrawals        Withdrawal[]
+  walletBalances     WalletBalance[]
+  telegramLinkTokens TelegramLinkToken[]
 }
 
 model DepositAddress {
-  id               String             @id @default(cuid())
-  userId           String
-  asset            String
-  network          String
-  address          String?
-  derivationIndex  Int?
-  enabled          Boolean            @default(true)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders           Order[]
+  id                  String               @id @default(cuid())
+  userId              String
+  asset               String
+  network             String
+  address             String?
+  derivationIndex     Int?
+  enabled             Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders              Order[]
   depositTransactions DepositTransaction[]
 
   @@unique([userId, asset, network])
@@ -88,27 +95,28 @@ model NetworkConfig {
 }
 
 model DepositTransaction {
-  id                     String                   @id @default(cuid())
-  depositAddressId       String
-  orderId                String?
-  provider               String?
-  providerEventId        String?
-  providerTransactionId  String?
+  id                       String                   @id @default(cuid())
+  depositAddressId         String
+  orderId                  String?
+  provider                 String?
+  providerEventId          String?
+  providerTransactionId    String?
   providerAddressReference String?
-  txHash                 String?
-  asset                  String
-  network                String
-  amount                 String?
-  confirmations         Int?
-  status                 DepositTransactionStatus @default(PENDING)
-  canonicalTxKey         String                   @unique
-  detectedAt             DateTime?
-  confirmedAt            DateTime?
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-  depositAddress         DepositAddress           @relation(fields: [depositAddressId], references: [id], onDelete: Cascade)
-  order                  Order?                   @relation(fields: [orderId], references: [id])
-  depositEvents          DepositEvent[]
+  txHash                   String?
+  asset                    String
+  network                  String
+  amount                   String?
+  confirmations            Int?
+  status                   DepositTransactionStatus @default(PENDING)
+  canonicalTxKey           String                   @unique
+  detectedAt               DateTime?
+  confirmedAt              DateTime?
+  creditedAt               DateTime?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  depositAddress           DepositAddress           @relation(fields: [depositAddressId], references: [id], onDelete: Cascade)
+  order                    Order?                   @relation(fields: [orderId], references: [id])
+  depositEvents            DepositEvent[]
 
   @@index([providerTransactionId])
   @@index([txHash])
@@ -135,7 +143,7 @@ model DepositEvent {
 }
 
 model Order {
-  id                  String             @id
+  id                  String               @id
   type                OrderType
   crypto              String
   cryptoName          String
@@ -149,17 +157,78 @@ model Order {
   walletAddress       String?
   total               String
   paymentProof        String?
-  status              OrderStatus        @default(PENDING)
+  status              OrderStatus          @default(PENDING)
   paymentStatus       PaymentStatus?
   customerContact     String?
   userId              String?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  paymentSubmittedAt   DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  paymentSubmittedAt  DateTime?
   verifiedAt          DateTime?
   adminNote           String?
   depositAddressId    String?
-  depositAddress      DepositAddress?    @relation(fields: [depositAddressId], references: [id])
-  user                User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  depositAddress      DepositAddress?      @relation(fields: [depositAddressId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   depositTransactions DepositTransaction[]
+}
+
+model TelegramLinkToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Withdrawal {
+  id            String           @id @default(cuid())
+  userId        String
+  asset         String
+  network       String
+  amount        Decimal          @db.Decimal(36, 18)
+  fee           Decimal          @db.Decimal(36, 18)
+  receiveAmount Decimal          @db.Decimal(36, 18)
+  address       String
+  status        WithdrawalStatus @default(PENDING)
+  txHash        String?
+  provider      String?
+  processedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WalletBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  asset     String
+  network   String
+  balance   Decimal  @default(0) @db.Decimal(36, 18)
+  locked    Decimal  @default(0) @db.Decimal(36, 18)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, asset, network])
+  @@index([userId])
 }

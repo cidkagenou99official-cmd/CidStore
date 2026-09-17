@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 import { isValidOrderTransition } from "@/app/lib/order-status";
 import type { NormalizedWalletWebhookEvent } from "@/app/lib/wallet-provider";
+import { creditWalletBalance } from "@/app/lib/wallet-balance-service";
 
 export type DepositEventProcessingResult = {
   created: boolean;
@@ -97,7 +98,7 @@ export function normalizeDepositEvent(
   };
 }
 
-function buildCanonicalTxKey(
+export function buildCanonicalTxKey(
   event: NormalizedWalletWebhookEvent,
   depositAddress?: { asset: string; network: string } | null,
 ): string | null {
@@ -119,7 +120,7 @@ function buildCanonicalTxKey(
   return null;
 }
 
-function sanitizeRawEvent(value: unknown): unknown {
+export function sanitizeRawEvent(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((entry) => sanitizeRawEvent(entry));
   }
@@ -139,7 +140,7 @@ function sanitizeRawEvent(value: unknown): unknown {
   return value;
 }
 
-function normalizeDecimalString(value: string | null | undefined): string | null {
+export function normalizeDecimalString(value: string | null | undefined): string | null {
   if (!value) {
     return null;
   }
@@ -157,7 +158,7 @@ function normalizeDecimalString(value: string | null | undefined): string | null
   return normalizedFraction ? `${normalizedWhole}.${normalizedFraction}` : normalizedWhole;
 }
 
-function amountsMatch(expected: string | null | undefined, actual: string | null | undefined): boolean {
+export function amountsMatch(expected: string | null | undefined, actual: string | null | undefined): boolean {
   const normalizedExpected = normalizeDecimalString(expected);
   const normalizedActual = normalizeDecimalString(actual);
 
@@ -168,7 +169,7 @@ function amountsMatch(expected: string | null | undefined, actual: string | null
   return normalizedExpected === normalizedActual;
 }
 
-function deriveSafeTransactionStatus(currentStatus: string, incomingStatus: string): string {
+export function deriveSafeTransactionStatus(currentStatus: string, incomingStatus: string): string {
   if (currentStatus === "FAILED" || currentStatus === "REORGED" || currentStatus === "CREDITED") {
     return currentStatus;
   }
@@ -691,9 +692,25 @@ export async function processDepositEvent(
     );
 
     const depositTransaction = transactionResolution.transaction;
-    const resolvedDepositAddressId =
-      depositAddress?.id ?? depositTransaction?.depositAddressId ?? null;
 
+if (
+  depositTransaction &&
+  depositTransaction.status === "CREDITED" &&
+  depositAddress
+) {
+  const creditResult = await creditWalletBalance(tx, {
+    depositTransactionId: depositTransaction.id,
+    userId: depositAddress.userId,
+    asset: depositTransaction.asset,
+    network: depositTransaction.network,
+    amount: depositTransaction.amount ?? normalizedEvent.amount ?? "",
+  });
+
+  console.log("Deposit wallet credit:", creditResult);
+}
+
+const resolvedDepositAddressId =
+  depositAddress?.id ?? depositTransaction?.depositAddressId ?? null;
     let eventResult: DepositEventProcessingResult | null = null;
 
     if (transactionResolution.conflict) {
