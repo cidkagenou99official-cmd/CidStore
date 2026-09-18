@@ -144,23 +144,19 @@ export async function POST(request: Request) {
        * available balance. This also protects against two
        * withdrawals being created at the same time.
        */
-      const reserved = await tx.walletBalance.updateMany({
-        where: {
-          userId: user.id,
-          asset,
-          network,
-          balance: {
-            gte: amountDecimal,
-          },
-        },
-        data: {
-          locked: {
-            increment: amountDecimal,
-          },
-        },
-      });
+      const reserved = await tx.$executeRaw`
+        UPDATE "WalletBalance"
+        SET
+          "locked" = "locked" + ${amountDecimal},
+          "updatedAt" = CURRENT_TIMESTAMP
+        WHERE
+          "userId" = ${user.id}
+          AND "asset" = ${asset}
+          AND "network" = ${network}
+          AND "balance" - "locked" >= ${amountDecimal}
+      `;
 
-      if (reserved.count !== 1) {
+      if (reserved !== 1) {
         throw new Error("INSUFFICIENT_BALANCE");
       }
 
