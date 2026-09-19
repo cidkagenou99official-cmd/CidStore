@@ -210,10 +210,14 @@ export class MockWalletProvider implements WalletProvider {
     const providerEventId = String((rawEvent as Record<string, unknown>).eventId ?? makeMockId("mock_event"));
     const providerTransactionId = String((rawEvent as Record<string, unknown>).providerTransactionId ?? makeMockId("mock_tx"));
 
+    const rawStatus = (rawEvent as Record<string, unknown>).status as string | undefined;
+
     const normalizedStatus: InternalDepositTransactionStatus =
-      ((rawEvent as Record<string, unknown>).status as string | undefined) === "confirmed"
-        ? "CONFIRMED"
-        : "DETECTED";
+      rawStatus === "credited"
+        ? "CREDITED"
+        : rawStatus === "confirmed"
+          ? "CONFIRMED"
+          : "DETECTED";
 
     return {
       provider: this.name,

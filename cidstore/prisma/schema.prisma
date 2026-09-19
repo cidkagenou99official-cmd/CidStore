@@ -6,62 +6,22 @@ datasource db {
   provider = "postgresql"
 }
 
-enum OrderType {
-  BUY
-  SELL
-}
-
-enum PaymentMethod {
-  QRIS
-  DANA
-}
-
-enum OrderStatus {
-  PENDING
-  WAITING_VERIFICATION
-  PAYMENT_VERIFIED
-  PROCESSING
-  COMPLETED
-  CANCELLED
-  REJECTED
-  WAITING_CRYPTO
-}
-
-enum PaymentStatus {
-  AWAITING_PAYMENT
-  WAITING_VERIFICATION
-  PAYMENT_VERIFIED
-  AWAITING_CRYPTO
-  REJECTED
-}
-
-enum DepositTransactionStatus {
-  PENDING
-  DETECTED
-  CONFIRMING
-  CONFIRMED
-  FAILED
-  REORGED
-  CREDITED
-  REJECTED
-}
-
 model User {
   id                 String              @id @default(cuid())
   email              String?             @unique
   name               String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   passwordHash       String?
+  language           String              @default("id")
   phone              String?
   telegramUsername   String?
   telegramId         String?             @unique
-  language           String              @default("id")
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
   depositAddresses   DepositAddress[]
   orders             Order[]
-  withdrawals        Withdrawal[]
-  walletBalances     WalletBalance[]
   telegramLinkTokens TelegramLinkToken[]
+  walletBalances     WalletBalance[]
+  withdrawals        Withdrawal[]
 }
 
 model DepositAddress {
@@ -75,8 +35,8 @@ model DepositAddress {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders              Order[]
   depositTransactions DepositTransaction[]
+  orders              Order[]
 
   @@unique([userId, asset, network])
 }
@@ -98,25 +58,25 @@ model DepositTransaction {
   id                       String                   @id @default(cuid())
   depositAddressId         String
   orderId                  String?
-  provider                 String?
-  providerEventId          String?
-  providerTransactionId    String?
-  providerAddressReference String?
   txHash                   String?
   asset                    String
   network                  String
   amount                   String?
   confirmations            Int?
   status                   DepositTransactionStatus @default(PENDING)
-  canonicalTxKey           String                   @unique
   detectedAt               DateTime?
   confirmedAt              DateTime?
-  creditedAt               DateTime?
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
+  canonicalTxKey           String                   @unique
+  provider                 String?
+  providerAddressReference String?
+  providerEventId          String?
+  providerTransactionId    String?
+  creditedAt               DateTime?
+  depositEvents            DepositEvent[]
   depositAddress           DepositAddress           @relation(fields: [depositAddressId], references: [id], onDelete: Cascade)
   order                    Order?                   @relation(fields: [orderId], references: [id])
-  depositEvents            DepositEvent[]
 
   @@index([providerTransactionId])
   @@index([txHash])
@@ -160,16 +120,16 @@ model Order {
   status              OrderStatus          @default(PENDING)
   paymentStatus       PaymentStatus?
   customerContact     String?
-  userId              String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   paymentSubmittedAt  DateTime?
   verifiedAt          DateTime?
   adminNote           String?
   depositAddressId    String?
-  depositAddress      DepositAddress?      @relation(fields: [depositAddressId], references: [id])
-  user                User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId              String?
   depositTransactions DepositTransaction[]
+  depositAddress      DepositAddress?      @relation(fields: [depositAddressId], references: [id])
+  user                User?                @relation(fields: [userId], references: [id])
 }
 
 model TelegramLinkToken {
@@ -179,19 +139,10 @@ model TelegramLinkToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
-}
-
-enum WithdrawalStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  CANCELLED
 }
 
 model Withdrawal {
@@ -209,8 +160,7 @@ model Withdrawal {
   processedAt   DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -226,9 +176,56 @@ model WalletBalance {
   locked    Decimal  @default(0) @db.Decimal(36, 18)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, asset, network])
   @@index([userId])
+}
+
+enum OrderType {
+  BUY
+  SELL
+}
+
+enum PaymentMethod {
+  QRIS
+  DANA
+}
+
+enum OrderStatus {
+  PENDING
+  WAITING_VERIFICATION
+  PAYMENT_VERIFIED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  REJECTED
+  WAITING_CRYPTO
+}
+
+enum PaymentStatus {
+  AWAITING_PAYMENT
+  WAITING_VERIFICATION
+  PAYMENT_VERIFIED
+  AWAITING_CRYPTO
+  REJECTED
+}
+
+enum DepositTransactionStatus {
+  PENDING
+  DETECTED
+  CONFIRMED
+  REJECTED
+  CONFIRMING
+  FAILED
+  REORGED
+  CREDITED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
