@@ -223,3 +223,56 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function GET() {
+  try {
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized." },
+        { status: 401 },
+      );
+    }
+
+    const withdrawals = await prisma.withdrawal.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        id: true,
+        asset: true,
+        network: true,
+        amount: true,
+        fee: true,
+        receiveAmount: true,
+        address: true,
+        status: true,
+        txHash: true,
+        provider: true,
+        processedAt: true,
+        createdAt: true,
+      },
+      take: 50,
+    });
+
+    return NextResponse.json({
+      withdrawals: withdrawals.map((withdrawal) => ({
+        ...withdrawal,
+        amount: withdrawal.amount.toString(),
+        fee: withdrawal.fee.toString(),
+        receiveAmount: withdrawal.receiveAmount.toString(),
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to load withdrawals", error);
+
+    return NextResponse.json(
+      { error: "Unable to load withdrawals." },
+      { status: 500 },
+    );
+  }
+}

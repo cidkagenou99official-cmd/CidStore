@@ -63,12 +63,36 @@ export default function WithdrawPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+
+  const [withdrawals, setWithdrawals] = useState<
+  Array<{
+    id: string;
+    asset: string;
+    network: string;
+    amount: string;
+    fee: string;
+    receiveAmount: string;
+    address: string;
+    status: string;
+    txHash: string | null;
+    provider: string | null;
+    processedAt: string | null;
+    createdAt: string;
+  }>
+>([]);
+const [historyLoading, setHistoryLoading] = useState(true);
   useEffect(() => {
-    fetch("/api/wallet/balance")
-      .then((res) => res.json())
-      .then((data) => setBalances(data.balances ?? []))
-      .catch(() => setBalances([]));
-  }, []);
+  fetch("/api/wallet/balance")
+    .then((res) => res.json())
+    .then((data) => setBalances(data.balances ?? []))
+    .catch(() => setBalances([]));
+
+  fetch("/api/withdrawals")
+    .then((res) => res.json())
+    .then((data) => setWithdrawals(data.withdrawals ?? []))
+    .catch(() => setWithdrawals([]))
+    .finally(() => setHistoryLoading(false));
+}, []);
 
   const selectedAsset = useMemo(
     () => assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0],
@@ -408,7 +432,90 @@ export default function WithdrawPage() {
             {loading ? "Creating Withdrawal..." : "Create Withdrawal"}
           </button>
         </form>
+<div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+  <div className="flex items-center justify-between">
+    <div>
+      <h2 className="text-lg font-bold">Withdrawal History</h2>
+      <p className="mt-1 text-xs text-white/40">
+        Riwayat withdrawal crypto kamu.
+      </p>
+    </div>
+  </div>
 
+  {historyLoading ? (
+    <div className="mt-5 flex items-center justify-center py-8 text-sm text-white/40">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      Loading history...
+    </div>
+  ) : withdrawals.length === 0 ? (
+    <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-5 text-center text-sm text-white/40">
+      Belum ada withdrawal.
+    </div>
+  ) : (
+    <div className="mt-5 space-y-3">
+      {withdrawals.map((withdrawal) => (
+        <div
+          key={withdrawal.id}
+          className="rounded-2xl border border-white/10 bg-black/20 p-4"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold">
+                {withdrawal.amount} {withdrawal.asset}
+              </p>
+              <p className="mt-1 text-xs text-white/40">
+                {withdrawal.network}
+              </p>
+            </div>
+
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                withdrawal.status === "COMPLETED"
+                  ? "bg-emerald-400/10 text-emerald-300"
+                  : withdrawal.status === "FAILED" ||
+                      withdrawal.status === "CANCELLED"
+                    ? "bg-red-400/10 text-red-300"
+                    : "bg-yellow-400/10 text-yellow-300"
+              }`}
+            >
+              {withdrawal.status}
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-2 text-xs">
+            <div className="flex justify-between gap-4">
+              <span className="text-white/40">Fee</span>
+              <span>
+                {withdrawal.fee} {withdrawal.asset}
+              </span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-white/40">Receive</span>
+              <span className="font-semibold text-emerald-300">
+                {withdrawal.receiveAmount} {withdrawal.asset}
+              </span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-white/40">Address</span>
+              <span className="max-w-[220px] truncate text-right">
+                {withdrawal.address}
+              </span>
+            </div>
+
+            <div className="flex justify-between gap-4">
+              <span className="text-white/40">Date</span>
+              <span>
+                {new Date(withdrawal.createdAt).toLocaleString("id-ID")}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
         <div className="mt-5 rounded-2xl border border-purple-400/10 bg-purple-500/[0.04] p-4 text-xs leading-6 text-white/40">
           <p className="font-semibold text-white/70">Important</p>
           <p className="mt-1">
