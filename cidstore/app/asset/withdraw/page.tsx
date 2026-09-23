@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownToLine,
@@ -14,8 +14,7 @@ const assets = [
   {
     symbol: "USDT",
     name: "Tether USD",
-    networks: ["EVM", "TRON"],
-    balance: 1250.5,
+    networks: ["ERC20", "TRC20"],
     fee: {
       EVM: 2.5,
       TRON: 1,
@@ -24,8 +23,7 @@ const assets = [
   {
     symbol: "ETH",
     name: "Ethereum",
-    networks: ["EVM"],
-    balance: 0.42,
+    networks: ["Ethereum"],
     fee: {
       EVM: 0.002,
     },
@@ -33,8 +31,7 @@ const assets = [
   {
     symbol: "BTC",
     name: "Bitcoin",
-    networks: ["BITCOIN"],
-    balance: 0.0185,
+    networks: ["Bitcoin"],
     fee: {
       BITCOIN: 0.0001,
     },
@@ -42,8 +39,7 @@ const assets = [
   {
     symbol: "SOL",
     name: "Solana",
-    networks: ["SOLANA"],
-    balance: 2.85,
+    networks: ["Solana"],
     fee: {
       SOLANA: 0.005,
     },
@@ -52,7 +48,6 @@ const assets = [
     symbol: "TON",
     name: "Toncoin",
     networks: ["TON"],
-    balance: 18.4,
     fee: {
       TON: 0.05,
     },
@@ -61,17 +56,36 @@ const assets = [
 
 export default function WithdrawPage() {
   const [selectedSymbol, setSelectedSymbol] = useState("USDT");
-  const [network, setNetwork] = useState("TRON");
+  const [balances, setBalances] = useState<Array<{ asset: string; network: string; balance: number; locked: number }>>([]);
+  const [network, setNetwork] = useState("ERC20");
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  useEffect(() => {
+    fetch("/api/wallet/balance")
+      .then((res) => res.json())
+      .then((data) => setBalances(data.balances ?? []))
+      .catch(() => setBalances([]));
+  }, []);
 
   const selectedAsset = useMemo(
     () => assets.find((asset) => asset.symbol === selectedSymbol) ?? assets[0],
     [selectedSymbol],
   );
+
+  const currentBalance = useMemo(() => {
+    const item = balances.find(
+      (balance) =>
+        balance.asset === selectedAsset.symbol &&
+        balance.network === network,
+    );
+
+    if (!item) return 0;
+
+    return Math.max(item.balance - item.locked, 0);
+  }, [balances, selectedAsset.symbol, network]);
 
   const fee =
     selectedAsset.fee[network as keyof typeof selectedAsset.fee] ?? 0;
@@ -80,7 +94,7 @@ export default function WithdrawPage() {
   const receiveAmount = Math.max(numericAmount - fee, 0);
 
   const isValidAmount =
-    numericAmount > fee && numericAmount <= selectedAsset.balance;
+    numericAmount > fee && numericAmount <= currentBalance;
 
   const isValidAddress = address.trim().length >= 8;
 
@@ -97,7 +111,7 @@ export default function WithdrawPage() {
   }
 
   function setMaxAmount() {
-    const max = Math.max(selectedAsset.balance, 0);
+    const max = Math.max(currentBalance, 0);
 
     setAmount(
       max.toLocaleString("en-US", {
@@ -231,7 +245,7 @@ export default function WithdrawPage() {
             <p className="mt-2 text-xs text-white/40">
               Available balance:{" "}
               <span className="font-medium text-white/70">
-                {selectedAsset.balance} {selectedAsset.symbol}
+                {currentBalance} {selectedAsset.symbol}
               </span>
             </p>
           </div>
@@ -327,7 +341,7 @@ export default function WithdrawPage() {
               </span>
             </div>
 
-            {numericAmount > selectedAsset.balance && (
+            {numericAmount > currentBalance && (
               <p className="mt-2 text-xs text-red-300">
                 Amount melebihi saldo yang tersedia.
               </p>

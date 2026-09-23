@@ -5,17 +5,17 @@ import { getCurrentUser } from "@/app/lib/customer-auth";
 
 const WITHDRAWAL_CONFIG = {
   USDT: {
-    EVM: 2.5,
-    TRON: 1,
+    ERC20: 2.5,
+    TRC20: 1,
   },
   ETH: {
-    EVM: 0.002,
+    Ethereum: 0.002,
   },
   BTC: {
-    BITCOIN: 0.0001,
+    Bitcoin: 0.0001,
   },
   SOL: {
-    SOLANA: 0.005,
+    Solana: 0.005,
   },
   TON: {
     TON: 0.05,
