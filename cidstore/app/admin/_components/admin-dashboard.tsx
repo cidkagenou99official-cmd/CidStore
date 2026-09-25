@@ -76,6 +76,36 @@ export default function AdminDashboard() {
           >
             View Store
           </Link>
+          <div className="flex flex-wrap gap-3">
+  <Link
+    href="/admin/orders"
+    className="rounded-full border border-cyan-400/40 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition hover:border-cyan-300 hover:text-white"
+  >
+    Orders
+  </Link>
+
+  <Link
+    href="/admin/withdrawals"
+    className="rounded-full border border-violet-400/40 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-200 transition hover:border-violet-300 hover:text-white"
+  >
+    Withdrawals
+  </Link>
+
+  <Link
+    href="/"
+    className="rounded-full border border-white/10 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-cyan-400/60 hover:text-white"
+  >
+    View Store
+  </Link>
+
+  <button
+    type="button"
+    onClick={handleLogout}
+    className="rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200"
+  >
+    Logout
+  </button>
+</div>
           <button
             type="button"
             onClick={handleLogout}
