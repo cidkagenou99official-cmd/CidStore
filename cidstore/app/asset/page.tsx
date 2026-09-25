@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Wallet } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  RefreshCw,
+  Wallet,
+} from "lucide-react";
 
 type Balance = {
   id: string;
@@ -65,42 +70,42 @@ export default function AssetPage() {
   }
 
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  fetch("/api/wallet/balance", {
-    cache: "no-store",
-  })
-    .then(async (response) => {
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Gagal mengambil saldo.");
-      }
-
-      if (!cancelled) {
-        setBalances(data.balances || []);
-        setError("");
-      }
+    fetch("/api/wallet/balance", {
+      cache: "no-store",
     })
-    .catch((err) => {
-      if (!cancelled) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Gagal mengambil saldo.",
-        );
-      }
-    })
-    .finally(() => {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    });
+      .then(async (response) => {
+        const data = await response.json();
 
-  return () => {
-    cancelled = true;
-  };
-}, []);
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal mengambil saldo.");
+        }
+
+        if (!cancelled) {
+          setBalances(data.balances || []);
+          setError("");
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Gagal mengambil saldo.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totalBalance = useMemo(() => {
     return balances.reduce((total, item) => {
@@ -134,7 +139,9 @@ export default function AssetPage() {
           <div className="mt-2 flex items-center justify-between gap-4">
             <div>
               <p className="text-3xl font-bold">
-                {loading ? "Loading..." : `${formatBalance(String(totalBalance))} USDT*`}
+                {loading
+                  ? "Loading..."
+                  : `${formatBalance(String(totalBalance))} USDT*`}
               </p>
 
               <p className="mt-1 text-xs text-white/40">
