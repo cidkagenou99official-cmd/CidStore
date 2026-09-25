@@ -15,10 +15,10 @@ const assets = [
     symbol: "USDT",
     name: "Tether USD",
     networks: ["ERC20", "TRC20"],
-    fee: {
-      EVM: 2.5,
-      TRON: 1,
-    },
+   fee: {
+  ERC20: 2.5,
+  TRC20: 1,
+},
   },
   {
     symbol: "ETH",
