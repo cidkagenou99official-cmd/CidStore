@@ -24,6 +24,11 @@ type Withdrawal = {
   provider: string | null;
   processedAt: string | null;
   createdAt: string;
+  user: {
+    id: string;
+    email: string | null;
+    name: string | null;
+  };
 };
 
 export default function AdminWithdrawalsPage() {
@@ -60,13 +65,13 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
- useEffect(() => {
-  const timer = setTimeout(() => {
-    void loadWithdrawals();
-  }, 0);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void loadWithdrawals();
+    }, 0);
 
-  return () => clearTimeout(timer);
-}, []);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function updateStatus(
     withdrawalId: string,
@@ -175,14 +180,36 @@ export default function AdminWithdrawalsPage() {
                       ID: {withdrawal.id}
                     </p>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <div>
-                        <p className="text-xs text-white/35">User ID</p>
-                        <p className="mt-1 break-all text-sm">
-                          {withdrawal.userId}
-                        </p>
-                      </div>
+                    <div className="mt-5 rounded-2xl border border-purple-400/10 bg-purple-400/[0.04] p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-purple-300/70">
+                        Customer
+                      </p>
 
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs text-white/35">Name</p>
+                          <p className="mt-1 text-sm font-semibold">
+                            {withdrawal.user.name || "Belum diatur"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs text-white/35">Email</p>
+                          <p className="mt-1 break-all text-sm">
+                            {withdrawal.user.email || "Belum diatur"}
+                          </p>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <p className="text-xs text-white/35">User ID</p>
+                          <p className="mt-1 break-all text-xs text-white/60">
+                            {withdrawal.userId}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       <div>
                         <p className="text-xs text-white/35">Network</p>
                         <p className="mt-1 text-sm">
@@ -203,6 +230,13 @@ export default function AdminWithdrawalsPage() {
                         </p>
                         <p className="mt-1 text-sm font-semibold text-emerald-300">
                           {withdrawal.receiveAmount} {withdrawal.asset}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-white/35">Provider</p>
+                        <p className="mt-1 text-sm">
+                          {withdrawal.provider || "-"}
                         </p>
                       </div>
                     </div>

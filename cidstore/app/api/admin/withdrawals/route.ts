@@ -38,6 +38,11 @@ function serializeWithdrawal(withdrawal: {
   processedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  user: {
+    id: string;
+    email: string | null;
+    name: string | null;
+  };
 }) {
   return {
     ...withdrawal,
@@ -46,6 +51,32 @@ function serializeWithdrawal(withdrawal: {
     receiveAmount: withdrawal.receiveAmount.toString(),
   };
 }
+
+const USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+} as const;
+
+const WITHDRAWAL_SELECT = {
+  id: true,
+  userId: true,
+  asset: true,
+  network: true,
+  amount: true,
+  fee: true,
+  receiveAmount: true,
+  address: true,
+  status: true,
+  txHash: true,
+  provider: true,
+  processedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  user: {
+    select: USER_SELECT,
+  },
+} as const;
 
 export async function GET() {
   try {
@@ -66,22 +97,7 @@ export async function GET() {
         createdAt: "desc",
       },
       take: 100,
-      select: {
-        id: true,
-        userId: true,
-        asset: true,
-        network: true,
-        amount: true,
-        fee: true,
-        receiveAmount: true,
-        address: true,
-        status: true,
-        txHash: true,
-        provider: true,
-        processedAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: WITHDRAWAL_SELECT,
     });
 
     return NextResponse.json({
@@ -194,22 +210,7 @@ export async function PATCH(request: Request) {
           data: {
             status: "PROCESSING",
           },
-          select: {
-            id: true,
-            userId: true,
-            asset: true,
-            network: true,
-            amount: true,
-            fee: true,
-            receiveAmount: true,
-            address: true,
-            status: true,
-            txHash: true,
-            provider: true,
-            processedAt: true,
-            createdAt: true,
-            updatedAt: true,
-          },
+          select: WITHDRAWAL_SELECT,
         });
       }
 
@@ -240,26 +241,11 @@ export async function PATCH(request: Request) {
             status: "COMPLETED",
             processedAt: new Date(),
           },
-          select: {
-            id: true,
-            userId: true,
-            asset: true,
-            network: true,
-            amount: true,
-            fee: true,
-            receiveAmount: true,
-            address: true,
-            status: true,
-            txHash: true,
-            provider: true,
-            processedAt: true,
-            createdAt: true,
-            updatedAt: true,
-          },
+          select: WITHDRAWAL_SELECT,
         });
       }
 
-           const released = await tx.$executeRaw`
+      const released = await tx.$executeRaw`
         UPDATE "WalletBalance"
         SET
           "locked" = "locked" - ${withdrawal.amount},
@@ -285,10 +271,11 @@ export async function PATCH(request: Request) {
           },
         });
 
-      if (balance && !balance.locked.isZero()) {
-  throw new Error("BALANCE_RELEASE_FAILED");
-}
+        if (balance && !balance.locked.isZero()) {
+          throw new Error("BALANCE_RELEASE_FAILED");
+        }
       }
+
       return tx.withdrawal.update({
         where: {
           id: withdrawal.id,
@@ -297,22 +284,7 @@ export async function PATCH(request: Request) {
           status: nextStatus,
           processedAt: new Date(),
         },
-        select: {
-          id: true,
-          userId: true,
-          asset: true,
-          network: true,
-          amount: true,
-          fee: true,
-          receiveAmount: true,
-          address: true,
-          status: true,
-          txHash: true,
-          provider: true,
-          processedAt: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: WITHDRAWAL_SELECT,
       });
     });
 
