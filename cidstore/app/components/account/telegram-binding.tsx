@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MessageCircle, Send, ShieldCheck, Unlink } from "lucide-react";
 
-const TELEGRAM_BOT_URL = "https://t.me/CidCrypto_Store_bot";
+const TELEGRAM_BOT_URL = "https://t.me/CidStore_Exchange_bot";
 
 type Props = {
   telegramUsername: string | null;
