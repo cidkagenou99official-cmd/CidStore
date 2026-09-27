@@ -53,6 +53,49 @@ export default function TelegramBinding({ telegramUsername }: Props) {
     }
   }
 
+  async function disconnectTelegram() {
+    const confirmed = window.confirm(
+      "Yakin ingin memutuskan akun Telegram dari CID Store?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setLoading(true);
+    setStatus("");
+    setError("");
+
+    try {
+      const response = await fetch("/api/customer/telegram/unlink", {
+        method: "POST",
+      });
+
+      const data = (await response.json()) as {
+        message?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to disconnect Telegram.");
+      }
+
+      setStatus(
+        data.message || "Telegram berhasil diputuskan dari akun CID Store.",
+      );
+
+      window.location.reload();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to disconnect Telegram.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
       <div className="flex items-start justify-between gap-4">
@@ -95,10 +138,15 @@ export default function TelegramBinding({ telegramUsername }: Props) {
             Telegram sudah terhubung dengan akun CID Store.
           </div>
 
-          <div className="mt-4 flex items-center gap-2 text-xs text-white/40">
+          <button
+            type="button"
+            onClick={disconnectTelegram}
+            disabled={loading}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
             <Unlink className="h-4 w-4" />
-            Untuk mengganti akun Telegram, hubungi CS CID Store.
-          </div>
+            {loading ? "Disconnecting..." : "Disconnect Telegram"}
+          </button>
         </div>
       ) : (
         <>
