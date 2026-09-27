@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  History,
   RefreshCw,
   Wallet,
 } from "lucide-react";
@@ -163,7 +164,7 @@ export default function AssetPage() {
           </div>
         </section>
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <Link
             href="/asset/deposit"
             className="rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 transition hover:bg-purple-500/15"
@@ -191,6 +192,21 @@ export default function AssetPage() {
 
             <p className="mt-1 text-sm text-white/50">
               Kirim crypto dari CID Store ke wallet lu.
+            </p>
+          </Link>
+
+          <Link
+            href="/wallet/history"
+            className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-5 transition hover:bg-cyan-500/15"
+          >
+            <History className="mb-3 h-6 w-6 text-cyan-400" />
+
+            <h2 className="font-semibold">
+              Wallet History
+            </h2>
+
+            <p className="mt-1 text-sm text-white/50">
+              Lihat riwayat deposit dan withdrawal crypto lu.
             </p>
           </Link>
         </div>
