@@ -17,6 +17,49 @@ function safeCompare(a: string, b: string) {
   return crypto.timingSafeEqual(aBuffer, bBuffer);
 }
 
+async function sendTelegramMessage(chatId: number, text: string) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+
+  if (!botToken) {
+    console.error("TELEGRAM_BOT_TOKEN is not configured.");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text }),
+      },
+    );
+    const result = (await response.json().catch(() => null)) as
+      | { ok?: unknown }
+      | null;
+
+    if (!response.ok || result?.ok !== true) {
+      console.error("Telegram sendMessage failed.", response.status);
+      return false;
+    }
+
+    return true;
+  } catch {
+    console.error("Telegram sendMessage request failed.");
+    return false;
+  }
+}
+
+async function reply(chatId: number, text: string) {
+  await sendTelegramMessage(chatId, text);
+  return NextResponse.json({ ok: true });
+}
+
+const START_HELP_MESSAGE =
+  "Selamat datang di CID Store! Bot ini membantu menghubungkan akun Telegram dengan akun CID Store. Untuk menghubungkan akun, buka halaman Akun di website CID Store lalu pilih Bind Telegram.";
+const BOT_HELP_MESSAGE =
+  "Bot CID Store aktif. Untuk menghubungkan akun, buka halaman Akun di website CID Store lalu pilih Bind Telegram dan ikuti petunjuk dari bot.";
+
 export async function POST(request: Request) {
   try {
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -60,31 +103,69 @@ export async function POST(request: Request) {
 
     const telegramMessage = message as {
       from?: { id?: unknown; username?: unknown };
-      chat?: { id?: unknown };
+      chat?: { id?: unknown; type?: unknown };
       text?: unknown;
     };
     const telegramId = telegramMessage.from?.id;
     const chatId = telegramMessage.chat?.id;
     const text = telegramMessage.text;
 
+    if (
+      telegramMessage.chat?.type !== "private" ||
+      typeof chatId !== "number" ||
+      !Number.isSafeInteger(chatId) ||
+      chatId <= 0
+    ) {
+      return NextResponse.json({ ok: true });
+    }
+
     if (typeof text !== "string") {
       return NextResponse.json({ ok: true });
     }
 
-    const startCommand = /^\/start(?:@[A-Za-z0-9_]{5,32})?\s+([A-Za-z0-9_-]{1,64})$/.exec(text);
+    const normalizedText = text.trim();
+    const isStartCommand = /^\/start(?:@[A-Za-z0-9_]{5,32})?(?:\s|$)/.test(
+      normalizedText,
+    );
+
+    if (!isStartCommand) {
+      return reply(chatId, BOT_HELP_MESSAGE);
+    }
+
+    const startCommand = /^\/start(?:@[A-Za-z0-9_]{5,32})?(?:\s+(\S+))?$/.exec(
+      normalizedText,
+    );
 
     if (!startCommand) {
-      return NextResponse.json({ ok: true });
+      return reply(
+        chatId,
+        "Format perintah tidak valid. Buat token binding baru dari halaman Akun CID Store, lalu kirim /start TOKEN ke bot.",
+      );
+    }
+
+    const token = startCommand[1];
+
+    if (!token) {
+      return reply(chatId, START_HELP_MESSAGE);
+    }
+
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(token)) {
+      return reply(
+        chatId,
+        "Token binding tidak valid. Buat token baru dari halaman Akun CID Store dan coba lagi.",
+      );
     }
 
     if (
       typeof telegramId !== "number" ||
       !Number.isSafeInteger(telegramId) ||
       telegramId <= 0 ||
-      typeof chatId !== "number" ||
       chatId !== telegramId
     ) {
-      return NextResponse.json({ ok: true });
+      return reply(
+        chatId,
+        "Binding hanya dapat dilakukan dari chat pribadi akun Telegram kamu.",
+      );
     }
 
     const telegramUsername = telegramMessage.from?.username;
@@ -94,10 +175,8 @@ export async function POST(request: Request) {
       (typeof telegramUsername !== "string" ||
         !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(telegramUsername))
     ) {
-      return NextResponse.json({ ok: false }, { status: 400 });
+      return reply(chatId, "Data akun Telegram tidak valid. Silakan coba lagi.");
     }
-
-    const token = startCommand[1];
 
     const tokenHash = hashToken(token);
 
@@ -108,14 +187,20 @@ export async function POST(request: Request) {
     });
 
     if (!linkToken) {
-      return NextResponse.json({ ok: true });
+      return reply(
+        chatId,
+        "Token binding tidak ditemukan atau sudah tidak berlaku. Buat token baru dari halaman Akun CID Store.",
+      );
     }
 
     if (
       linkToken.usedAt ||
       linkToken.expiresAt.getTime() <= Date.now()
     ) {
-      return NextResponse.json({ ok: true });
+      return reply(
+        chatId,
+        "Token binding sudah digunakan atau kedaluwarsa. Buat token baru dari halaman Akun CID Store.",
+      );
     }
 
     const existingUser = await prisma.user.findFirst({
@@ -131,7 +216,10 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json({ ok: true });
+      return reply(
+        chatId,
+        "Akun Telegram ini sudah terhubung ke akun CID Store lain.",
+      );
     }
 
     const now = new Date();
@@ -163,10 +251,12 @@ export async function POST(request: Request) {
       return updatedUser.count === 1;
     });
 
-    return NextResponse.json({
-      ok: true,
-      linked,
-    });
+    return reply(
+      chatId,
+      linked
+        ? "Berhasil! Akun Telegram kamu sudah terhubung dengan CID Store."
+        : "Binding gagal. Token mungkin sudah digunakan atau akun CID Store sudah memiliki Telegram. Buat token baru dan coba lagi.",
+    );
   } catch (error) {
     console.error("Telegram webhook error", error);
 

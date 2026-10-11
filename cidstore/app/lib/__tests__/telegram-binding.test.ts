@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import crypto from "node:crypto";
 
-const { db, getCurrentUser } = vi.hoisted(() => ({
+const { db, fetchMock, getCurrentUser } = vi.hoisted(() => ({
   db: {
     user: {
       findFirst: vi.fn(),
@@ -16,6 +16,7 @@ const { db, getCurrentUser } = vi.hoisted(() => ({
     },
     $transaction: vi.fn(),
   },
+  fetchMock: vi.fn(),
   getCurrentUser: vi.fn(),
 }));
 
@@ -53,12 +54,25 @@ function tokenHash(token: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("TELEGRAM_WEBHOOK_SECRET", "test-secret");
+  vi.stubEnv("TELEGRAM_BOT_TOKEN", "test-bot-token");
+  vi.stubGlobal("fetch", fetchMock);
+  fetchMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true }),
+  });
   getCurrentUser.mockResolvedValue(currentUser);
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
+
+function sentMessage() {
+  const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+  return JSON.parse(String(request.body)) as { chat_id: number; text: string };
+}
 
 describe("Telegram account binding", () => {
   it("rejects the legacy manual binding endpoint without writing", async () => {
@@ -126,7 +140,7 @@ describe("Telegram account binding", () => {
     const response = await telegramWebhook(
       webhookRequest({
         from: { id: 123456, username: "official_handle" },
-        chat: { id: 123456 },
+        chat: { id: 123456, type: "private" },
         text: `/start ${token}`,
       }),
     );
@@ -136,6 +150,7 @@ describe("Telegram account binding", () => {
       where: { tokenHash: tokenHash(token) },
     });
     expect(db.$transaction).not.toHaveBeenCalled();
+    expect(sentMessage().text).toContain("sudah digunakan atau kedaluwarsa");
   });
 
   it("accepts a valid private bot update and stores its official username", async () => {
@@ -161,13 +176,17 @@ describe("Telegram account binding", () => {
     const response = await telegramWebhook(
       webhookRequest({
         from: { id: 123456, username: "official_handle" },
-        chat: { id: 123456 },
+        chat: { id: 123456, type: "private" },
         text: `/start ${token}`,
       }),
     );
     const body = await response.json();
 
-    expect(body).toEqual({ ok: true, linked: true });
+    expect(body).toEqual({ ok: true });
+    expect(sentMessage()).toMatchObject({
+      chat_id: 123456,
+      text: expect.stringContaining("Berhasil"),
+    });
     expect(tx.telegramLinkToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: "link-1", usedAt: null }),
@@ -188,13 +207,14 @@ describe("Telegram account binding", () => {
     const response = await telegramWebhook(
       webhookRequest({
         from: { id: 123456, username: "official_handle" },
-        chat: { id: -987654 },
+        chat: { id: -987654, type: "group" },
         text: "/start valid-token",
       }),
     );
 
     expect(response.status).toBe(200);
     expect(db.telegramLinkToken.findUnique).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects updates without the configured webhook secret", async () => {
@@ -204,5 +224,71 @@ describe("Telegram account binding", () => {
 
     expect(response.status).toBe(401);
     expect(db.telegramLinkToken.findUnique).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("replies to ordinary private messages with bot usage", async () => {
+    const response = await telegramWebhook(
+      webhookRequest({
+        from: { id: 123456 },
+        chat: { id: 123456, type: "private" },
+        text: "halo",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sentMessage()).toMatchObject({
+      chat_id: 123456,
+      text: expect.stringContaining("Bot CID Store aktif"),
+    });
+    expect(db.telegramLinkToken.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("welcomes private users who send /start without a token", async () => {
+    const response = await telegramWebhook(
+      webhookRequest({
+        from: { id: 123456 },
+        chat: { id: 123456, type: "private" },
+        text: "/start",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sentMessage()).toMatchObject({
+      chat_id: 123456,
+      text: expect.stringContaining("Selamat datang di CID Store"),
+    });
+    expect(db.telegramLinkToken.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("replies with a failure when a binding token cannot be found", async () => {
+    db.telegramLinkToken.findUnique.mockResolvedValue(null);
+
+    const response = await telegramWebhook(
+      webhookRequest({
+        from: { id: 123456 },
+        chat: { id: 123456, type: "private" },
+        text: "/start missing-token",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(sentMessage().text).toContain("Token binding tidak ditemukan");
+  });
+
+  it("sends replies only through the server-side Telegram Bot API", async () => {
+    await telegramWebhook(
+      webhookRequest({
+        from: { id: 123456 },
+        chat: { id: 123456, type: "private" },
+        text: "halo",
+      }),
+    );
+
+    const [url, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      "https://api.telegram.org/bottest-bot-token/sendMessage",
+    );
+    expect(request.method).toBe("POST");
   });
 });
