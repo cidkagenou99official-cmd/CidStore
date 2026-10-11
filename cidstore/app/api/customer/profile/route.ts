@@ -20,6 +20,7 @@ export async function GET() {
         name: user.name,
         phone: user.phone,
         telegramUsername: user.telegramUsername,
+        telegramConnected: Boolean(user.telegramId),
         language: user.language,
         createdAt: user.createdAt,
       },
@@ -53,11 +54,6 @@ export async function PATCH(request: Request) {
     const phone =
       typeof body.phone === "string" ? body.phone.trim() : undefined;
 
-    const telegramUsername =
-      typeof body.telegramUsername === "string"
-        ? body.telegramUsername.trim().replace(/^@/, "")
-        : undefined;
-
     const language =
       body.language === "id" || body.language === "en"
         ? body.language
@@ -77,21 +73,11 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (telegramUsername !== undefined && telegramUsername.length > 50) {
-      return NextResponse.json(
-        { error: "Telegram username is too long." },
-        { status: 400 },
-      );
-    }
-
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
         ...(name !== undefined ? { name } : {}),
         ...(phone !== undefined ? { phone: phone || null } : {}),
-        ...(telegramUsername !== undefined
-          ? { telegramUsername: telegramUsername || null }
-          : {}),
         ...(language !== undefined ? { language } : {}),
       },
     });
@@ -104,6 +90,7 @@ export async function PATCH(request: Request) {
         name: updatedUser.name,
         phone: updatedUser.phone,
         telegramUsername: updatedUser.telegramUsername,
+        telegramConnected: Boolean(updatedUser.telegramId),
         language: updatedUser.language,
         createdAt: updatedUser.createdAt,
       },

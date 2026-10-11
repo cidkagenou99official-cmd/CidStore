@@ -20,6 +20,13 @@ export async function POST() {
       );
     }
 
+    if (user.telegramId) {
+      return NextResponse.json(
+        { error: "Disconnect the currently linked Telegram account first." },
+        { status: 409 },
+      );
+    }
+
     const token = crypto.randomBytes(32).toString("base64url");
     const tokenHash = hashToken(token);
     const expiresAt = new Date(Date.now() + TOKEN_TTL_MS);

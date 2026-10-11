@@ -10,6 +10,7 @@ type UserProfile = {
   name: string | null;
   phone: string | null;
   telegramUsername: string | null;
+  telegramConnected: boolean;
   language: string;
   createdAt: string;
 };
@@ -19,7 +20,6 @@ export default function AccountPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [telegramUsername, setTelegramUsername] = useState("");
   const [language, setLanguage] = useState("id");
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -51,7 +51,6 @@ export default function AccountPage() {
         setUser(profile);
         setName(profile.name ?? "");
         setPhone(profile.phone ?? "");
-        setTelegramUsername(profile.telegramUsername ?? "");
         setLanguage(profile.language ?? "id");
       } catch (err) {
         setError(
@@ -79,7 +78,6 @@ export default function AccountPage() {
         body: JSON.stringify({
           name,
           phone,
-          telegramUsername,
           language,
         }),
       });
@@ -95,7 +93,6 @@ export default function AccountPage() {
       setUser(updatedUser);
       setName(updatedUser.name ?? "");
       setPhone(updatedUser.phone ?? "");
-      setTelegramUsername(updatedUser.telegramUsername ?? "");
       setLanguage(updatedUser.language ?? "id");
 
       setMessage("Account updated successfully.");
@@ -281,28 +278,6 @@ export default function AccountPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-sm text-slate-300">
-                  Telegram Username
-                </label>
-
-                <div className="mt-2 flex">
-                  <span className="flex items-center rounded-l-2xl border border-r-0 border-white/10 bg-slate-950/90 px-4 text-slate-500">
-                    @
-                  </span>
-
-                  <input
-                    value={telegramUsername}
-                    onChange={(event) =>
-                      setTelegramUsername(
-                        event.target.value.replace(/^@/, ""),
-                      )
-                    }
-                    className="w-full rounded-r-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none focus:border-cyan-400"
-                    placeholder="username"
-                  />
-                </div>
-              </div>
             </div>
           </section>
 
@@ -417,7 +392,10 @@ export default function AccountPage() {
             </div>
           </section>
 
-          <TelegramBinding telegramUsername={telegramUsername || null} />
+          <TelegramBinding
+            connected={user.telegramConnected}
+            telegramUsername={user.telegramUsername}
+          />
 
           {message && (
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-300">

@@ -40,33 +40,64 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as {
-      message?: {
-        from?: {
-          id?: number;
-          username?: string;
-        };
-        chat?: {
-          id?: number;
-        };
-        text?: string;
-      };
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ ok: false }, { status: 400 });
+    }
+
+    if (!body || typeof body !== "object" || !("message" in body)) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const message = (body as { message?: unknown }).message;
+
+    if (!message || typeof message !== "object") {
+      return NextResponse.json({ ok: false }, { status: 400 });
+    }
+
+    const telegramMessage = message as {
+      from?: { id?: unknown; username?: unknown };
+      chat?: { id?: unknown };
+      text?: unknown;
     };
+    const telegramId = telegramMessage.from?.id;
+    const chatId = telegramMessage.chat?.id;
+    const text = telegramMessage.text;
 
-    const message = body.message;
-    const telegramId = message?.from?.id;
-    const telegramUsername = message?.from?.username ?? "";
-    const text = message?.text ?? "";
-
-    if (!telegramId || !text.startsWith("/start ")) {
+    if (typeof text !== "string") {
       return NextResponse.json({ ok: true });
     }
 
-    const token = text.slice("/start ".length).trim();
+    const startCommand = /^\/start(?:@[A-Za-z0-9_]{5,32})?\s+([A-Za-z0-9_-]{1,64})$/.exec(text);
 
-    if (!token || token.length > 200) {
+    if (!startCommand) {
       return NextResponse.json({ ok: true });
     }
+
+    if (
+      typeof telegramId !== "number" ||
+      !Number.isSafeInteger(telegramId) ||
+      telegramId <= 0 ||
+      typeof chatId !== "number" ||
+      chatId !== telegramId
+    ) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const telegramUsername = telegramMessage.from?.username;
+
+    if (
+      telegramUsername !== undefined &&
+      (typeof telegramUsername !== "string" ||
+        !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(telegramUsername))
+    ) {
+      return NextResponse.json({ ok: false }, { status: 400 });
+    }
+
+    const token = startCommand[1];
 
     const tokenHash = hashToken(token);
 
@@ -103,30 +134,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
+    const now = new Date();
+    const linked = await prisma.$transaction(async (tx) => {
+      const claimedToken = await tx.telegramLinkToken.updateMany({
+        where: {
+          id: linkToken.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+
+      if (claimedToken.count !== 1) {
+        return false;
+      }
+
+      const updatedUser = await tx.user.updateMany({
         where: {
           id: linkToken.userId,
+          telegramId: null,
         },
         data: {
           telegramId: String(telegramId),
-          telegramUsername: telegramUsername || null,
+          telegramUsername: telegramUsername ?? null,
         },
       });
 
-      await tx.telegramLinkToken.update({
-        where: {
-          id: linkToken.id,
-        },
-        data: {
-          usedAt: new Date(),
-        },
-      });
+      return updatedUser.count === 1;
     });
 
     return NextResponse.json({
       ok: true,
-      linked: true,
+      linked,
     });
   } catch (error) {
     console.error("Telegram webhook error", error);

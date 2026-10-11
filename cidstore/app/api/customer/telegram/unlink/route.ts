@@ -13,14 +13,23 @@ export async function POST() {
       );
     }
 
-    await prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        telegramId: null,
-        telegramUsername: null,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          telegramId: null,
+          telegramUsername: null,
+        },
+      });
+
+      await tx.telegramLinkToken.deleteMany({
+        where: {
+          userId: user.id,
+          usedAt: null,
+        },
+      });
     });
 
     return NextResponse.json({

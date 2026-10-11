@@ -6,15 +6,16 @@ import { MessageCircle, Send, ShieldCheck, Unlink } from "lucide-react";
 const TELEGRAM_BOT_URL = "https://t.me/CidStore_Exchange_bot";
 
 type Props = {
+  connected: boolean;
   telegramUsername: string | null;
 };
 
-export default function TelegramBinding({ telegramUsername }: Props) {
+export default function TelegramBinding({ connected, telegramUsername }: Props) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
-  const isConnected = Boolean(telegramUsername);
+  const isConnected = connected;
 
   async function connectTelegram() {
     setLoading(true);
@@ -130,7 +131,7 @@ export default function TelegramBinding({ telegramUsername }: Props) {
           </p>
 
           <p className="mt-1 text-sm font-medium text-white">
-            @{telegramUsername}
+            {telegramUsername ? `@${telegramUsername}` : "Connected Telegram account"}
           </p>
 
           <div className="mt-4 flex items-center gap-2 text-xs text-emerald-300">
